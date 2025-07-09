@@ -3,8 +3,9 @@ Digital chess timer for Android 14+ made using Jetpack Compose
 
 ### In early development/prototype
 
-## Features (25%)
+## Features (40%)
 * ☑ Basic functionality
-* ☐ Select time mode
+* ☑ Select time mode
 * ☐ Pause countdown
 * ☐ Count moves made by player
+* ☐ Sounds
