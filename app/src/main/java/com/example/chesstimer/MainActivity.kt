@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
         var white by remember { mutableStateOf(false) }
         var black by remember { mutableStateOf(false) }
         var started by remember { mutableStateOf(false) }
+        var runTimers by remember {mutableStateOf(true)}
         var whiteTime by remember { mutableStateOf(Time(15,0)) }
         var blackTime by remember { mutableStateOf(Time(15,0)) }
         var ogTime by remember {mutableStateOf(Time(15,0))}
@@ -78,6 +79,9 @@ class MainActivity : ComponentActivity() {
         var isSettings by remember {mutableStateOf(false)}
         var increment by remember {mutableStateOf(0)}
 
+        var whiteIncrement by remember {mutableStateOf(false)}
+        var blackIncrement by remember {mutableStateOf(false)}
+
         val func: (Boolean, Boolean) -> Unit = {w,b -> white = w; black = b}
         val setStart: (Boolean) -> Unit = {s -> started = s}
         val timeToString: (Time) -> String = {t -> "%02d.%02d".format(t.minutes,t.seconds)}
@@ -85,10 +89,13 @@ class MainActivity : ComponentActivity() {
         val reset: () -> Unit = {
             func(false, false)
             setStart(false)
+            whiteIncrement = false
+            blackIncrement = false
             whiteTime = ogTime
             blackTime = ogTime
             whiteMillis = 0
             blackMillis = 0
+            runTimers = true
         }
 
         var customMinute by remember{mutableStateOf("")}
@@ -102,8 +109,7 @@ class MainActivity : ComponentActivity() {
         }
 
         //white timer
-        var whiteIncrement by remember {mutableStateOf(false)}
-        LaunchedEffect(white) {
+        LaunchedEffect(white, runTimers) {
             if(white) {
                 if (!whiteIncrement) {
                     whiteIncrement = true
@@ -120,6 +126,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             while(white){
+                if(!runTimers) break
                 delay(100)
                 whiteMillis-=100
                 if(whiteMillis <= 0) {
@@ -140,8 +147,7 @@ class MainActivity : ComponentActivity() {
         }
 
         //black timer
-        var blackIncrement by remember {mutableStateOf(false)}
-        LaunchedEffect(black) {
+        LaunchedEffect(black, runTimers) {
             if(black) {
                 if (!blackIncrement) {
                     blackIncrement = true
@@ -160,6 +166,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             while(black){
+                if(!runTimers) break
                 delay(100)
                 blackMillis-=100
                 if(blackMillis <= 0) {
@@ -183,8 +190,8 @@ class MainActivity : ComponentActivity() {
             Box(
                 modifier = Modifier.fillMaxSize()
             ) {
-                SideSwitch(Modifier.align(Alignment.TopCenter), white, white, black, func, 0, setStart)
-                SideSwitch(Modifier.align(Alignment.BottomCenter), black, white, black, func, 1, setStart)
+                SideSwitch(Modifier.align(Alignment.TopCenter), white, white, black, func, 0, setStart, runTimers)
+                SideSwitch(Modifier.align(Alignment.BottomCenter), black, white, black, func, 1, setStart, runTimers)
                 Column(modifier = Modifier.align(Alignment.Center).rotate(90F)) {
                     Text(
                         timeToString(whiteTime) + " ->",
@@ -198,17 +205,19 @@ class MainActivity : ComponentActivity() {
                         color = if (black) Color.Magenta else Color.White
                     )
                 }
-                Row(modifier = Modifier.rotate(90F).align(Alignment.CenterStart).offset(y = 48.dp)/*.padding(16.dp)*/) {
+                Button(modifier = Modifier.rotate(90F).align(Alignment.CenterEnd), onClick = {
+                    runTimers = !runTimers
+                    whiteIncrement = !runTimers
+                    blackIncrement = !runTimers
+                }, enabled = started) {
+                    Text(if(runTimers) "PAUSE" else "RESUME")
+                }
+                Row(modifier = Modifier.rotate(90F).align(Alignment.CenterStart).offset(y = 64.dp)/*.padding(16.dp)*/) {
                     Button(onClick = {
                         reset()
                     }, enabled = started) {
                         Text("RESET")
                     }
-                    // TODO: Make pause feature
-//                Spacer(Modifier.width(32.dp))
-//                Button(onClick = {}, enabled = started) {
-//                    Text("PAUSE")
-//                }
                     Spacer(Modifier.width(32.dp))
                     Button(onClick = {
                         isSettings = true
@@ -218,7 +227,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } else {
-            val abd: () -> Unit = {isSettings = false}
+            val aba: () -> Unit = {isSettings = false}
             Box(
                 modifier = Modifier.fillMaxSize()
             ) {
@@ -229,24 +238,24 @@ class MainActivity : ComponentActivity() {
                     Text("Go back")
                 }
                 Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                    SettingsTimeRow("Bullet", setTime, abd, arrayOf(
+                    SettingsTimeRow("Bullet", setTime, aba, arrayOf(
                         makeTs("1|0"),
                         makeTs("1|1"),
                         makeTs("2|1")
                     ))
-                    SettingsTimeRow("Blitz", setTime, abd, arrayOf(
+                    SettingsTimeRow("Blitz", setTime, aba, arrayOf(
                         makeTs("3|0"),
                         makeTs("3|2"),
                         makeTs("5|0"),
                         makeTs("5|3")
                     ))
-                    SettingsTimeRow("Rapid", setTime, abd, arrayOf(
+                    SettingsTimeRow("Rapid", setTime, aba, arrayOf(
                         makeTs("10|0"),
                         makeTs("10|10"),
                         makeTs("15|0"),
                         makeTs("20|0"),
                     ))
-                    SettingsTimeRow("Classical", setTime, abd, arrayOf(
+                    SettingsTimeRow("Classical", setTime, aba, arrayOf(
                         makeTs("30|0"),
                         makeTs("40|0"),
                         makeTs("60|0")
@@ -278,7 +287,7 @@ class MainActivity : ComponentActivity() {
                         Spacer(Modifier.width(16.dp))
                         Button(onClick = {
                             setTime(Time(customMinute.toInt(),0), customInc.toInt())
-                            abd()
+                            aba()
                         }) {
                             Text("Set custom")
                         }
@@ -306,7 +315,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun SideSwitch(modifier: Modifier, myState: Boolean, white: Boolean, black: Boolean, stateChange: (Boolean, Boolean) -> Unit,
-                   id: Int, setStarted: (Boolean) -> Unit) {
+                   id: Int, setStarted: (Boolean) -> Unit, runTimers: Boolean) {
         Button(
             modifier = modifier
                 .width(300.dp)
@@ -320,12 +329,14 @@ class MainActivity : ComponentActivity() {
                 Color.White
             ),
             onClick = {
-                if(!white && !black) {
-                    stateChange(id == 0, id == 1)
-                    setStarted(true)
-                } else
-                if (!myState) {
-                    stateChange(black, white)
+                if(runTimers) {
+                    if (!white && !black) {
+                        stateChange(id == 0, id == 1)
+                        setStarted(true)
+                    } else
+                        if (!myState) {
+                            stateChange(black, white)
+                        }
                 }
             }) {}
     }
